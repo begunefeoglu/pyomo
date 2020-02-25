@@ -9,9 +9,13 @@
 #  ___________________________________________________________________________
 
 import os
+
+import pyutilib
 import pyutilib.th as unittest
 
-from pyomo.solvers.plugins.solvers.CPLEX import _validate_file_name
+from pyomo.opt import SolverStatus, TerminationCondition
+from pyomo.solvers.plugins.solvers.CPLEX import CPLEXSHELL, MockCPLEX, _validate_file_name
+
 
 class _mock_cplex_128(object):
     def version(self):
@@ -53,6 +57,67 @@ class CPLEX_utils(unittest.TestCase):
             _validate_file_name(_126, fname, 'xxx')
         with self.assertRaisesRegexp(ValueError, msg):
             _validate_file_name(_128, fname, 'xxx')
+
+
+
+class TestCPLEXSHELLProcessLogfile(unittest.TestCase):
+    def setUp(self):
+        solver = MockCPLEX()
+        solver._log_file = pyutilib.services.TempfileManager.create_tempfile(
+            suffix=".log"
+        )
+        self.solver = solver
+
+    def tearDown(self):
+        pyutilib.services.TempfileManager.clear_tempfiles()
+
+    def test_log_file_shows_no_solution(self):
+        log_file_text = """
+MIP - Time limit exceeded, no integer solution.
+Current MIP best bound =  0.0000000000e+00 (gap is infinite)
+Solution time =    0.00 sec.  Iterations = 0  Nodes = 0
+Deterministic time = 0.00 ticks  (0.20 ticks/sec)
+
+CPLEX> CPLEX Error  1217: No solution exists.
+No file written.
+CPLEX>"""
+        with open(self.solver._log_file, "w") as f:
+            f.write(log_file_text)
+
+        results = CPLEXSHELL.process_logfile(self.solver)
+        self.assertEqual(results.solver.status, SolverStatus.error)
+        self.assertEqual(
+            results.solver.termination_condition, TerminationCondition.noSolution
+        )
+        self.assertEqual(
+            results.solver.termination_message,
+            "MIP - Time limit exceeded, no integer solution.",
+        )
+        self.assertEqual(results.solver.return_code, 1217)
+
+    def test_log_file_shows_infeasible(self):
+        log_file_text = """
+MIP - Integer infeasible.
+Current MIP best bound =  0.0000000000e+00 (gap is infinite)
+Solution time =    0.00 sec.  Iterations = 0  Nodes = 0
+Deterministic time = 0.00 ticks  (0.20 ticks/sec)
+
+CPLEX> CPLEX Error  1217: No solution exists.
+No file written.
+CPLEX>"""
+        with open(self.solver._log_file, "w") as f:
+            f.write(log_file_text)
+
+        results = CPLEXSHELL.process_logfile(self.solver)
+        self.assertEqual(results.solver.status, SolverStatus.error)
+        self.assertEqual(
+            results.solver.termination_condition, TerminationCondition.infeasible
+        )
+        self.assertEqual(
+            results.solver.termination_message, "MIP - Integer infeasible."
+        )
+        self.assertEqual(results.solver.return_code, 1217)
+
 
 if __name__ == "__main__":
     unittest.main()
