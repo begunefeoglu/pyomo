@@ -85,7 +85,7 @@ CPLEX>"""
             f.write(log_file_text)
 
         results = CPLEXSHELL.process_logfile(self.solver)
-        self.assertEqual(results.solver.status, SolverStatus.error)
+        self.assertEqual(results.solver.status, SolverStatus.warning)
         self.assertEqual(
             results.solver.termination_condition, TerminationCondition.noSolution
         )
@@ -109,7 +109,7 @@ CPLEX>"""
             f.write(log_file_text)
 
         results = CPLEXSHELL.process_logfile(self.solver)
-        self.assertEqual(results.solver.status, SolverStatus.error)
+        self.assertEqual(results.solver.status, SolverStatus.warning)
         self.assertEqual(
             results.solver.termination_condition, TerminationCondition.infeasible
         )
@@ -133,7 +133,7 @@ CPLEX>"""
             f.write(log_file_text)
 
         results = CPLEXSHELL.process_logfile(self.solver)
-        self.assertEqual(results.solver.status, SolverStatus.error)
+        self.assertEqual(results.solver.status, SolverStatus.warning)
         self.assertEqual(
             results.solver.termination_condition, TerminationCondition.infeasible
         )
